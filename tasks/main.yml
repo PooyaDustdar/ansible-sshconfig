@@ -1,3 +1,133 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # tasks file for my_role
+
+- name: Generate CA key if not exists
+  ansible.builtin.command: "ssh-keygen -t rsa -b 4096 -f {{ ca_key_path }} -N ''"
+  args:
+    creates: "{{ ca_key_path }}"
+  delegate_to: localhost
+
+- name: Generate user ssh key pairs
+  ansible.builtin.command: "ssh-keygen -t rsa -b 4096 -f /tmp/{{ item.username }} -N ''"
+  args:
+    creates: "/tmp/{{ item.username }}"
+  loop: "{{ ssh_users }}"
+  delegate_to: localhost
+
+- name: Sign user public keys with CA
+  ansible.builtin.command: >
+    ssh-keygen -s {{ ca_key_path }} -I {{ item.username }} -n {{ item.username }},{{ item.groups | join(',') }} -V +{{ cert_validity }}s /tmp/{{ item.username }}.pub
+  loop: "{{ ssh_users }}"
+  delegate_to: localhost
+
+- name: Fetch signed certificates to files/
+  ansible.builtin.fetch:
+    src: "/tmp/{{ item.username }}-cert.pub"
+    dest: "files/{{ item.username }}-cert.pub"
+    flat: yes
+  loop: "{{ ssh_users }}"
+  delegate_to: localhost
+
+- name: Fetch user public keys to files/
+  ansible.builtin.fetch:
+    src: "/tmp/{{ item.username }}.pub"
+    dest: "files/{{ item.username }}.pub"
+    flat: yes
+  loop: "{{ ssh_users }}"
+  delegate_to: localhost
+
+- name: Fetch CA public key to files/
+  ansible.builtin.fetch:
+    src: "{{ ca_key_path }}.pub"
+    dest: "files/ca.pub"
+    flat: yes
+  delegate_to: localhost
+
+- name: Copy CA public key to gateway servers only
+  ansible.builtin.copy:
+    src: ca.pub
+    dest: /etc/ssh/trusted-user-ca-keys.pem
+    owner: root
+    group: root
+    mode: '0644'
+  when: "'gateway' in group_names"
+
+- name: Ensure AuthorizedPrincipalsFile directory exists
+  ansible.builtin.file:
+    path: /etc/ssh/auth_principals
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Set up auth_principals for each user
+  ansible.builtin.copy:
+    content: |
+      {{ item.username }}
+      {% for g in item.groups %}
+      {{ g }}
+      {% endfor %}
+    dest: "/etc/ssh/auth_principals/{{ item.username }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ ssh_users }}"
+
+- name: Set up auth_principals for each user (proxy-only for non-admin)
+  ansible.builtin.copy:
+    content: |
+      {{ item.username }}
+      {% for g in item.groups %}
+      {{ g }}
+      {% endfor %}
+    dest: "/etc/ssh/auth_principals/{{ item.username }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ ssh_users }}"
+  when: "'gateway' in group_names"
+
+- name: Restrict non-admin users to proxy only (no interactive shell)
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^Match User {{ item.username }}'
+    line: |
+      Match User {{ item.username }}
+      ForceCommand {{ 'echo Proxy only. No interactive shell.' if 'admin' not in item.groups else 'none' }}
+    state: present
+    insertafter: EOF
+  loop: "{{ ssh_users }}"
+  when: "'gateway' in group_names and 'admin' not in item.groups"
+  notify: Restart sshd
+
+- name: Ensure TrustedUserCAKeys and AuthorizedPrincipalsFile in sshd_config
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^TrustedUserCAKeys|^AuthorizedPrincipalsFile'
+    line: "{{ item }}"
+    state: present
+    insertafter: EOF
+  loop:
+    - 'TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem'
+    - 'AuthorizedPrincipalsFile /etc/ssh/auth_principals/%u'
+  notify: Restart sshd
+
+- name: Add user accounts for group members only
+  ansible.builtin.user:
+    name: "{{ item.username }}"
+    state: present
+  loop: >
+    {{
+      ssh_users |
+      selectattr('groups', 'contains', group_names[0]) |
+      list
+      +
+      (group_names[0] in ['client']
+        | ternary(
+            ssh_users | selectattr('groups', 'contains', 'admin') | list,
+            []
+          )
+      )
+    }}
+  when: group_names | length > 0

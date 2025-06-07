@@ -1,3 +1,36 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # defaults file for my_role
+
+# لیست کاربران برای تولید کلید و امضا (هر کاربر با جزئیات و چند گروه)
+ssh_users:
+  - username: alice
+    email: alice@example.com
+    groups:
+      - admin
+      - infra
+      - devops
+  - username: bob
+    email: bob@example.com
+    groups:
+      - developer
+      - frontend
+  - username: carol
+    email: carol@example.com
+    groups:
+      - developer
+      - backend
+  - username: dave
+    email: dave@example.com
+    groups:
+      - infra
+      - sysadmins
+  - username: eve
+    email: eve@example.com
+    groups:
+      - infra
+      - dbadmins
+# مسیر کلید CA (در مسیر tmp برای تست)
+ca_key_path: /tmp/ssh_ca
+# مدت اعتبار certificate به ثانیه
+cert_validity: 7884000  # سه ماه
