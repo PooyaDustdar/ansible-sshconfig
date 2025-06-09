@@ -1,0 +1,21 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: gateway
+    image: geerlingguy/docker-ubuntu2204-ansible
+    privileged: true
+    pre_build_image: true
+    
+  - name: client1
+    image: geerlingguy/docker-ubuntu2204-ansible
+    privileged: true
+    pre_build_image: true
+provisioner:
+  name: ansible
+  playbooks:
+    converge: converge.yml
+verifier:
+  name: ansible

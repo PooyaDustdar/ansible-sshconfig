@@ -1,0 +1,31 @@
+---
+# Example variables for molecule test
+ssh_users:
+  - username: alice
+    email: alice@example.com
+    groups:
+      - admin
+      - infra
+      - devops
+  - username: bob
+    email: bob@example.com
+    groups:
+      - developer
+      - frontend
+  - username: carol
+    email: carol@example.com
+    groups:
+      - developer
+      - backend
+  - username: dave
+    email: dave@example.com
+    groups:
+      - infra
+      - sysadmins
+  - username: eve
+    email: eve@example.com
+    groups:
+      - infra
+      - dbadmins
+ca_key_path: /tmp/ssh_ca
+cert_validity: 7884000
