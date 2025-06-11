@@ -1,0 +1,62 @@
+---
+
+- name: Generate CA key if not exists
+  ansible.builtin.command: "ssh-keygen -t rsa -b 4096 -f {{ ca_key_path }} -N ''"
+  args:
+    creates: "{{ ca_key_path }}"
+
+- name: Generate user ssh key pairs
+  ansible.builtin.command: "ssh-keygen -t rsa -b 4096 -f /tmp/{{ item.username }} -N ''"
+  args:
+    creates: "/tmp/{{ item.username }}"
+  loop: "{{ ssh_users }}"
+
+- name: Fetch user public keys to files/
+  ansible.builtin.fetch:
+    src: "/tmp/{{ item.username }}.pub"
+    dest: "files/{{ item.username }}/rsa.pub"
+    flat: yes
+  loop: "{{ ssh_users }}"
+
+- name: Fetch user SSH private keys to files/
+  ansible.builtin.fetch:
+    src: "/tmp/{{ item.username }}"
+    dest: "files/{{ item.username }}/rsa"
+    flat: yes
+  loop: "{{ ssh_users }}"
+
+- name: Fetch CA public key to files/
+  ansible.builtin.fetch:
+    src: "{{ ca_key_path }}.pub"
+    dest: "files/ca.pub"
+    flat: yes
+
+- name: Fix CA key permissions
+  ansible.builtin.file:
+    path: "{{ ca_key_path }}"
+    mode: '0600'
+
+- name: Fix user key permissions
+  ansible.builtin.file:
+    path: "/tmp/{{ item.username }}"
+    mode: '0600'
+  loop: "{{ ssh_users }}"
+
+- name: Sign user public keys with CA
+  ansible.builtin.command: >
+    ssh-keygen -s {{ ca_key_path }} -I {{ item.username }} -n {{ item.username }},{{ item.groups | join(',') }} -V +{{ cert_validity }}s /tmp/{{ item.username }}.pub
+  loop: "{{ ssh_users }}"
+
+- name: Fetch signed certificates to files/
+  ansible.builtin.fetch:
+    src: "/tmp/{{ item.username }}-cert.pub"
+    dest: "files/{{ item.username }}/rsa-cert.pub"
+    flat: yes
+  loop: "{{ ssh_users }}"
+
+- name: Generate SSH config for users in files/
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: "files/{{ item.username }}/config"
+    mode: '0644'
+  loop: "{{ ssh_users }}"

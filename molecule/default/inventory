@@ -1,5 +1,5 @@
 [gateway]
-gateway ansible_host=gateway
+gateway ansible_connection=docker
 
 [client]
-client1 ansible_host=client1
+client ansible_connection=docker

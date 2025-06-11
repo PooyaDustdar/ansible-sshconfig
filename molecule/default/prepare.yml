@@ -1,0 +1,43 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Install required packages
+      package:
+        name:
+          - python3
+          - netcat-openbsd
+          - net-tools
+        state: present
+
+    - name: Check SSH service status
+      command: service ssh status
+      register: ssh_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: Debug SSH service status
+      debug:
+        var: ssh_status
+
+    - name: Wait for SSH port to become available
+      wait_for:
+        port: 22
+        state: started
+        timeout: 30
+        host: 0.0.0.0  # Check on all interfaces
+        delay: 5  # Wait 5 seconds before first check
+        connect_timeout: 1  # Reduce individual connection attempt timeout
+      register: port_check
+
+    - name: Debug port check result
+      debug:
+        var: port_check

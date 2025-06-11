@@ -1,0 +1,22 @@
+# SSH Client Configuration for {{ item.username }}
+Host gateway
+    HostName gateway
+    Port 222
+    User root
+    IdentityFile ~/.ssh/rsa
+    CertificateFile ~/.ssh/rsa-cert.pub
+    ForwardAgent yes
+
+Host client
+    HostName client
+    User root
+    IdentityFile ~/.ssh/rsa
+    CertificateFile ~/.ssh/rsa-cert.pub
+    ProxyJump gateway
+
+# For direct access to client (if allowed)
+Host client-direct
+    HostName client
+    User root
+    IdentityFile ~/.ssh/rsa
+    CertificateFile ~/.ssh/rsa-cert.pub

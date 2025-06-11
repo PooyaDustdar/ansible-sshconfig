@@ -6,6 +6,15 @@ galaxy_info:
   min_ansible_version: 2.9
   role_name: sshconfig
   namespace: pooyadustdar
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+
   galaxy_tags:
     - ssh
     - ca
