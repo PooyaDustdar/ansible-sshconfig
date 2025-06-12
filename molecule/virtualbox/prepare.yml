@@ -3,6 +3,13 @@
   hosts: all
   become: true
   gather_facts: true
+
+  handlers:
+    - name: Restart ssh
+      service:
+        name: ssh
+        state: restarted
+
   tasks:
     - name: Update apt cache
       apt:

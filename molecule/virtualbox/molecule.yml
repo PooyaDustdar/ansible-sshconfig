@@ -1,0 +1,79 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provider:
+    name: virtualbox
+
+platforms:
+  - name: gateway
+    box: ubuntu/focal64
+    memory: 1024
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        type: dhcp
+    instance_raw_config_args:
+      - "vm.hostname = 'gateway'"
+    groups:
+      - gateway
+
+  - name: frontend
+    box: ubuntu/focal64
+    memory: 1024
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        type: dhcp
+    instance_raw_config_args:
+      - "vm.hostname = 'frontend'"
+    groups:
+      - frontend
+
+  - name: backend
+    box: ubuntu/focal64
+    memory: 1024
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        type: dhcp
+    instance_raw_config_args:
+      - "vm.hostname = 'backend'"
+    groups:
+      - backend
+
+  - name: database
+    box: ubuntu/focal64
+    memory: 1024
+    cpus: 1
+    interfaces:
+      - network_name: private_network
+        type: dhcp
+    instance_raw_config_args:
+      - "vm.hostname = 'database'"
+    groups:
+      - database
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}
+  inventory:
+    group_vars:
+      all:
+        ansible_user: vagrant
+        ansible_become: true
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+verifier:
+  name: ansible
+
+scenario:
+  test_sequence:
+    - dependency
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy
