@@ -1,0 +1,48 @@
+---
+- name: Create
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Create multipass instances
+      shell: >
+        multipass launch {{ item.image }}
+        --name {{ item.name }}
+        --cpus {{ item.cpus }}
+        --memory {{ item.memory }}M
+        --cloud-init -
+      args:
+        stdin: "{{ item.instance_raw_config_args[0].cloud-init | to_yaml }}"
+      loop: "{{ molecule_yml.platforms }}"
+      changed_when: false
+
+    - name: Wait for instances to be ready
+      pause:
+        seconds: 30
+
+    - name: Get instance IP addresses
+      shell: "multipass info {{ item.name }} --format json | jq -r '.info.\"{{ item.name }}\".ipv4[0]'"
+      register: instance_ips
+      changed_when: false
+      loop: "{{ molecule_yml.platforms }}"
+
+    - name: Create inventory file
+      copy:
+        content: |
+          {% for host in molecule_yml.platforms %}
+          {{ host.name }} ansible_host={{ instance_ips.results[loop.index0].stdout }}
+          {% endfor %}
+
+          [gateway]
+          gateway
+
+          [frontend]
+          frontend
+
+          [backend]
+          backend
+
+          [database]
+          database
+        dest: "{{ lookup('env', 'MOLECULE_INVENTORY_FILE') }}"
+        mode: "0644"

@@ -1,0 +1,68 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: delegated
+  options:
+    managed: false
+    ansible_connection_options:
+      ansible_connection: ssh
+
+platforms:
+  - name: gateway
+    image: "ubuntu/20.04"
+    cpus: 1
+    memory: 1024
+    groups:
+      - gateway
+    instance_raw_config_args:
+      - cloud-init:
+          package_update: true
+          package_upgrade: true
+
+  - name: frontend
+    image: "ubuntu/20.04"
+    cpus: 1
+    memory: 1024
+    groups:
+      - frontend
+    instance_raw_config_args:
+      - cloud-init:
+          package_update: true
+          package_upgrade: true
+
+  - name: backend
+    image: "ubuntu/20.04"
+    cpus: 1
+    memory: 1024
+    groups:
+      - backend
+    instance_raw_config_args:
+      - cloud-init:
+          package_update: true
+          package_upgrade: true
+
+  - name: database
+    image: "ubuntu/20.04"
+    cpus: 1
+    memory: 1024
+    groups:
+      - database
+    instance_raw_config_args:
+      - cloud-init:
+          package_update: true
+          package_upgrade: true
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}
+  inventory:
+    group_vars:
+      all:
+        ansible_user: ubuntu
+        ansible_become: true
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+verifier:
+  name: ansible
