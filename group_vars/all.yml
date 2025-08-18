@@ -29,3 +29,6 @@ ssh_users:
       - dbadmins
 ca_key_path: /tmp/ssh_ca
 cert_validity: 7884000
+ansible_become: true
+ansible_become_method: sudo
+ansible_become_password: "پسورد"

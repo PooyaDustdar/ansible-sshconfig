@@ -1,0 +1,19 @@
+---
+all:
+  hosts:
+    backend: &id001
+      ansible_host: 127.0.0.1
+      ansible_port: 22
+      ansible_user: root
+    database: &id002
+      ansible_host: 127.0.0.1
+      ansible_port: 22
+      ansible_user: root
+    frontend: &id004
+      ansible_host: 127.0.0.1
+      ansible_port: 22
+      ansible_user: root
+    gateway: &id005
+      ansible_host: 127.0.0.1
+      ansible_port: 22
+      ansible_user: root

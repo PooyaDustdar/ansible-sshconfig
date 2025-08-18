@@ -15,21 +15,21 @@
   ansible.builtin.fetch:
     src: "/tmp/{{ item.username }}.pub"
     dest: "files/{{ item.username }}/rsa.pub"
-    flat: yes
+    flat: true
   loop: "{{ ssh_users }}"
 
 - name: Fetch user SSH private keys to files/
   ansible.builtin.fetch:
     src: "/tmp/{{ item.username }}"
     dest: "files/{{ item.username }}/rsa"
-    flat: yes
+    flat: true
   loop: "{{ ssh_users }}"
 
 - name: Fetch CA public key to files/
   ansible.builtin.fetch:
     src: "{{ ca_key_path }}.pub"
     dest: "files/ca.pub"
-    flat: yes
+    flat: true
 
 - name: Fix CA key permissions
   ansible.builtin.file:
@@ -43,15 +43,22 @@
   loop: "{{ ssh_users }}"
 
 - name: Sign user public keys with CA
-  ansible.builtin.command: >
-    ssh-keygen -s {{ ca_key_path }} -I {{ item.username }} -n {{ item.username }},{{ item.groups | join(',') }} -V +{{ cert_validity }}s /tmp/{{ item.username }}.pub
+  ansible.builtin.command:
+    cmd: >-
+      ssh-keygen -s {{ ca_key_path }}
+      -I {{ item.username }}
+      -n {{ item.username }},{{ item.groups | join(',') }}
+      -V +{{ cert_validity }}s
+      /tmp/{{ item.username }}.pub
+  args:
+    creates: "/tmp/{{ item.username }}-cert.pub"
   loop: "{{ ssh_users }}"
 
 - name: Fetch signed certificates to files/
   ansible.builtin.fetch:
     src: "/tmp/{{ item.username }}-cert.pub"
     dest: "files/{{ item.username }}/rsa-cert.pub"
-    flat: yes
+    flat: true
   loop: "{{ ssh_users }}"
 
 - name: Generate SSH config for users in files/
