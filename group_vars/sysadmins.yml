@@ -6,7 +6,6 @@ ssh_users:
       - proxy
 
 
-
 ca_key_path: /etc/ssh/trusted-user-ca-keys
 users_certificates_path: /home
 cert_validity_seconds: 7884000
