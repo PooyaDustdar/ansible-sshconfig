@@ -1,4 +1,3 @@
----
 - name: Ensure user groups exist
   ansible.builtin.group:
     name: "{{ item }}"

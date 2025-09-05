@@ -2,7 +2,7 @@ galaxy_info:
   author: pooyadustdar
   description: SSH config role for CA and principals (test mode)
   license: MIT
-  min_ansible_version: 2.9
+  min_ansible_version: '2.9'
   role_name: sshconfig
   namespace: pooyadustdar
 
