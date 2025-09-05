@@ -1,0 +1,37 @@
+ssh_users:
+  - username: carol
+    password: "123456"
+    email: carol@example.com
+    groups:
+      - proxy
+  - username: bob
+    password: "123456"
+    email: bob@example.com
+    groups:
+      - proxy
+  - username: dave
+    password: "123456"
+    email: dave@example.com
+    groups:
+      - proxy
+  - username: eve
+    password: "123456"
+    email: eve@example.com
+    groups:
+      - proxy
+  - username: alice
+    password: "123456"
+    email: alice@example.com
+    groups:
+      - admin
+      - proxy
+
+
+
+ca_key_path: /etc/ssh/trusted-user-ca-keys
+users_certificates_path: /home
+cert_validity_seconds: 7884000
+cert_validity_week: "{{ cert_validity_seconds // 604800 }}"
+ansible_become: true
+ansible_become_method: sudo
+ansible_become_password: "پسورد"

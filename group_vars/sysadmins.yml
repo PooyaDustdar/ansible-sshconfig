@@ -1,0 +1,16 @@
+ssh_users:
+  - username: eve
+    password: "123456"
+    email: eve@example.com
+    groups:
+      - proxy
+
+
+
+ca_key_path: /etc/ssh/trusted-user-ca-keys
+users_certificates_path: /home
+cert_validity_seconds: 7884000
+cert_validity_week: "{{ cert_validity_seconds // 604800 }}"
+ansible_become: true
+ansible_become_method: sudo
+ansible_become_password: "پسورد"

@@ -1,8 +1,5 @@
-#SPDX-License-Identifier: MIT-0
----
 - name: Restart ssh
   ansible.builtin.service:
-    name: ssh
-    state: started
-  tags:
-    - molecule-notest
+    name: sshd
+    state: restarted
+  become: true

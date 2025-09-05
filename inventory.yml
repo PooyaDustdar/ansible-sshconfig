@@ -1,19 +1,43 @@
 ---
 all:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
   hosts:
-    backend: &id001
-      ansible_host: 127.0.0.1
-      ansible_port: 22
-      ansible_user: root
-    database: &id002
-      ansible_host: 127.0.0.1
-      ansible_port: 22
-      ansible_user: root
-    frontend: &id004
-      ansible_host: 127.0.0.1
-      ansible_port: 22
-      ansible_user: root
-    gateway: &id005
-      ansible_host: 127.0.0.1
-      ansible_port: 22
-      ansible_user: root
+    sshgw:
+      ansible_host: 192.168.56.10
+      ansible_user: ubuntu
+      ansible_password: ubuntu
+    app-frontend:
+      ansible_host: 192.168.56.11
+      ansible_user: ubuntu
+      ansible_password: ubuntu
+    app-backend:
+      ansible_host: 192.168.56.12
+      ansible_user: ubuntu
+      ansible_password: ubuntu
+    database:
+      ansible_host: 192.168.56.13
+      ansible_user: ubuntu
+      ansible_password: ubuntu
+
+  children:
+    gateway:
+      hosts:
+        sshgw:
+    developer:
+      children:
+        frontend:
+          hosts:
+            app-frontend:
+        backend:
+          hosts:
+            app-backend:
+    infra:
+      children:
+        dbadmins:
+          hosts:
+            database:
+        devops:
+          hosts:
+            database:

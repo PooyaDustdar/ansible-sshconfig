@@ -1,69 +1,69 @@
----
+- name: Generate Gateway CA key if not exists
+  when: "'gateway' in group_names"
+  run_once: true
+  community.crypto.openssh_keypair:
+    path: "{{ ca_key_path }}"
+    type: rsa
+    size: 4096
+    state: present
+    regenerate: never
 
-- name: Generate CA key if not exists
-  ansible.builtin.command: "ssh-keygen -t rsa -b 4096 -f {{ ca_key_path }} -N ''"
-  args:
-    creates: "{{ ca_key_path }}"
+- name: Fetch file from gateway
+  when: "'gateway' in group_names"
+  ansible.builtin.fetch:
+    src: "{{ item }}"
+    dest: ./files/
+    flat: true
+  loop:
+    - "{{ ca_key_path }}"
+    - "{{ ca_key_path }}.pub"
+
+- name: Distribute CA public key to all servers
+  when: "'gateway' not in group_names"
+  ansible.builtin.copy:
+    src: "./files/{{ ca_key_path | basename }}.pub"
+    dest: "{{ ca_key_path }}.pub"
+    owner: root
+    group: root
+    mode: '0644'
 
 - name: Generate user ssh key pairs
-  ansible.builtin.command: "ssh-keygen -t rsa -b 4096 -f /tmp/{{ item.username }} -N ''"
-  args:
-    creates: "/tmp/{{ item.username }}"
-  loop: "{{ ssh_users }}"
-
-- name: Fetch user public keys to files/
-  ansible.builtin.fetch:
-    src: "/tmp/{{ item.username }}.pub"
-    dest: "files/{{ item.username }}/rsa.pub"
-    flat: true
-  loop: "{{ ssh_users }}"
-
-- name: Fetch user SSH private keys to files/
-  ansible.builtin.fetch:
-    src: "/tmp/{{ item.username }}"
-    dest: "files/{{ item.username }}/rsa"
-    flat: true
-  loop: "{{ ssh_users }}"
-
-- name: Fetch CA public key to files/
-  ansible.builtin.fetch:
-    src: "{{ ca_key_path }}.pub"
-    dest: "files/ca.pub"
-    flat: true
-
-- name: Fix CA key permissions
-  ansible.builtin.file:
-    path: "{{ ca_key_path }}"
-    mode: '0600'
-
-- name: Fix user key permissions
-  ansible.builtin.file:
-    path: "/tmp/{{ item.username }}"
-    mode: '0600'
+  when: "'gateway' in group_names"
+  community.crypto.openssh_keypair:
+    path: "{{ users_certificates_path }}/{{ item.username }}/id_rsa"
+    type: rsa
+    size: 4096
+    state: present
+    regenerate: never
+    mode: '0604'
+    owner: "{{ item.username }}"
+    group: "{{ item.username }}"
   loop: "{{ ssh_users }}"
 
 - name: Sign user public keys with CA
-  ansible.builtin.command:
-    cmd: >-
-      ssh-keygen -s {{ ca_key_path }}
-      -I {{ item.username }}
-      -n {{ item.username }},{{ item.groups | join(',') }}
-      -V +{{ cert_validity }}s
-      /tmp/{{ item.username }}.pub
-  args:
-    creates: "/tmp/{{ item.username }}-cert.pub"
+  when: "'gateway' in group_names"
+  community.crypto.openssh_cert:
+    type: user
+    path: "{{ users_certificates_path }}/{{ item.username }}/id_rsa.cert"
+    public_key: "{{ users_certificates_path }}/{{ item.username }}/id_rsa.pub"
+    signing_key: "{{ ca_key_path }}"
+    valid_from: always
+    valid_to: "+{{ cert_validity_week }}w"
+    principals:
+      - "{{ item.username }}"
+      - "{{ item.groups }}"
+    identifier: "{{ item.username }}"
+    state: present
+    owner: "{{ item.username }}"
+    group: "{{ item.username }}"
   loop: "{{ ssh_users }}"
 
-- name: Fetch signed certificates to files/
-  ansible.builtin.fetch:
-    src: "/tmp/{{ item.username }}-cert.pub"
-    dest: "files/{{ item.username }}/rsa-cert.pub"
-    flat: true
-  loop: "{{ ssh_users }}"
-
-- name: Generate SSH config for users in files/
+- name: Generate SSH config for users
+  when: "'gateway' in group_names"
   ansible.builtin.template:
     src: ssh_config.j2
-    dest: "files/{{ item.username }}/config"
+    dest: "{{ users_certificates_path }}/{{ item.username }}/config"
     mode: '0644'
+    owner: "{{ item.username }}"
+    group: "{{ item.username }}"
   loop: "{{ ssh_users }}"

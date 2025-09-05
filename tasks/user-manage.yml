@@ -1,0 +1,20 @@
+---
+- name: Ensure user groups exist
+  ansible.builtin.group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ ssh_users | map(attribute='groups') | flatten | unique }}"
+
+- name: Debug user creation
+  ansible.builtin.debug:
+    msg: "group_names {{ group_names }} created with groups: {{ ssh_users }}"
+
+- name: Create users
+  ansible.builtin.user:
+    name: "{{ item.username }}"
+    groups: "{{ item.groups | join(',') }}"
+    password: "{{ item.password | password_hash('sha512') }}"
+    state: present
+    shell: "{{ '/sbin/nologin' if 'admin' not in item.groups else '/bin/bash' }}"
+    create_home: true
+  loop: "{{ ssh_users }}"

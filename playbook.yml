@@ -1,5 +1,6 @@
 ---
-- name: Converge
+
+- name: Apply SSH configuration role to all servers
   hosts: all
   become: true
   roles:

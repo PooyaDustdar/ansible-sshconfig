@@ -1,75 +1,30 @@
-#SPDX-License-Identifier: MIT-0
 ---
+- name: Manage users on gateway
+  ansible.builtin.import_tasks: user-manage.yml
+  become: true
+  tags:
+    - user_manager
+
 - name: Generate SSH CA key pair
-  import_tasks: key-manage.yml
-  delegate_to: localhost
+  ansible.builtin.import_tasks: key-manage.yml
+  become: true
+  tags:
+    - ca_keygen
+
+- name: Configure SSH on gateway
+  ansible.builtin.import_tasks: sshd-gateway-config.yml
+  become: true
   run_once: true
-
-- name: Copy CA public key to gateway servers only
-  ansible.builtin.copy:
-    src: ca.pub
-    dest: /etc/ssh/trusted-user-ca-keys.pem
-    owner: root
-    group: root
-    mode: '0644'
+  tags:
+    - config_gateway
   when: "'gateway' in group_names"
-
-- name: Ensure AuthorizedPrincipalsFile directory exists
-  ansible.builtin.file:
-    path: /etc/ssh/auth_principals
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-
-- name: Set up auth_principals for each user
-  ansible.builtin.copy:
-    content: |
-      {{ item.username }}
-      {% for g in item.groups %}
-      {{ g }}
-      {% endfor %}
-    dest: "/etc/ssh/auth_principals/{{ item.username }}"
-    owner: root
-    group: root
-    mode: '0644'
-  loop: "{{ ssh_users }}"
-
-- name: Set up auth_principals for each user (proxy-only for non-admin)
-  ansible.builtin.copy:
-    content: |
-      {{ item.username }}
-      {% for g in item.groups %}
-      {{ g }}
-      {% endfor %}
-    dest: "/etc/ssh/auth_principals/{{ item.username }}"
-    owner: root
-    group: root
-    mode: '0644'
-  loop: "{{ ssh_users }}"
-  when: "'gateway' in group_names"
-
-- name: Restrict non-admin users to proxy only (no interactive shell)
-  ansible.builtin.lineinfile:
-    path: /etc/ssh/sshd_config
-    regexp: '^Match User {{ item.username }}'
-    line: |
-      Match User {{ item.username }}
-      ForceCommand {{ 'echo Proxy only. No interactive shell.' if 'admin' not in item.groups else 'none' }}
-    state: present
-    insertafter: EOF
-  loop: "{{ ssh_users }}"
-  when: "'gateway' in group_names and 'admin' not in item.groups"
   notify: Restart ssh
 
-- name: Ensure TrustedUserCAKeys and AuthorizedPrincipalsFile in sshd_config
-  ansible.builtin.lineinfile:
-    path: /etc/ssh/sshd_config
-    regexp: '^#?TrustedUserCAKeys|^#?AuthorizedPrincipalsFile'
-    line: "{{ item }}"
-    state: present
-    insertafter: EOF
-  loop:
-    - 'TrustedUserCAKeys /etc/ssh/trusted-user-ca-keys.pem'
-    - 'AuthorizedPrincipalsFile /etc/ssh/auth_principals/%u'
+- name: Configure SSH on servers
+  ansible.builtin.import_tasks: sshd-servers-config.yml
+  become: true
+  run_once: true
+  tags:
+    - config_servers
+  when: "'gateway' not in group_names"
   notify: Restart ssh
