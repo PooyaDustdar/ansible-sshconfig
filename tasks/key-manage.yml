@@ -7,17 +7,16 @@
     size: 4096
     state: present
     regenerate: never
-
 - name: Fetch file from gateway
   when: "'gateway' in group_names"
   ansible.builtin.fetch:
     src: "{{ item }}"
     dest: ./files/
     flat: true
+    mode: '0600'
   loop:
     - "{{ ca_key_path }}"
     - "{{ ca_key_path }}.pub"
-
 - name: Distribute CA public key to all servers
   when: "'gateway' not in group_names"
   ansible.builtin.copy:
@@ -27,43 +26,59 @@
     group: root
     mode: '0644'
 
+
+- name: Create directories for users' ssh keys
+  delegate_to: localhost
+  run_once: true
+  become: false
+  ansible.builtin.file:
+    path: "files/{{ item.username }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ ssh_users }}"
+- name: Change ca keys permission
+  delegate_to: localhost
+  run_once: true
+  become: false
+  ansible.builtin.file:
+    path: "files/{{ item }}"
+    state: file
+    mode: '0600'
+  loop:
+    - "{{ ca_key_path | basename }}"
+    - "{{ ca_key_path | basename }}.pub"
 - name: Generate user ssh key pairs
-  when: "'gateway' in group_names"
+  delegate_to: localhost
+  run_once: true
+  become: false
   community.crypto.openssh_keypair:
-    path: "{{ users_certificates_path }}/{{ item.username }}/id_rsa"
+    path: "files/{{ item.username }}/id_rsa"
     type: rsa
     size: 4096
     state: present
     regenerate: never
-    mode: '0604'
-    owner: "{{ item.username }}"
-    group: "{{ item.username }}"
   loop: "{{ ssh_users }}"
-
 - name: Sign user public keys with CA
-  when: "'gateway' in group_names"
+  delegate_to: localhost
+  run_once: true
+  become: false
   community.crypto.openssh_cert:
     type: user
-    path: "{{ users_certificates_path }}/{{ item.username }}/id_rsa.cert"
-    public_key: "{{ users_certificates_path }}/{{ item.username }}/id_rsa.pub"
-    signing_key: "{{ ca_key_path }}"
+    path: "files/{{ item.username }}/id_rsa.cert"
+    public_key: "files/{{ item.username }}/id_rsa.pub"
+    signing_key: "files/{{ ca_key_path | basename }}"
     valid_from: always
     valid_to: "+{{ cert_validity_week }}w"
-    principals:
-      - "{{ item.username }}"
-      - "{{ item.groups }}"
+    principals: "{{ [item.username] + item.groups }}"
     identifier: "{{ item.username }}"
     state: present
-    owner: "{{ item.username }}"
-    group: "{{ item.username }}"
   loop: "{{ ssh_users }}"
-
 - name: Generate SSH config for users
-  when: "'gateway' in group_names"
+  delegate_to: localhost
+  run_once: true
+  become: false
   ansible.builtin.template:
     src: ssh_config.j2
-    dest: "{{ users_certificates_path }}/{{ item.username }}/config"
+    dest: "files/{{ item.username }}/config"
     mode: '0644'
-    owner: "{{ item.username }}"
-    group: "{{ item.username }}"
   loop: "{{ ssh_users }}"
