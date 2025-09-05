@@ -1,4 +1,4 @@
-Role Name
+SSH Config
 =========
 
 Ansible SSH Config Role (Test Mode)
