@@ -1,0 +1,53 @@
+- name: Generate Gateway CA key if not exists
+  community.crypto.openssh_keypair:
+    path: "files/{{ ca_key_name }}"
+    type: rsa
+    size: 4096
+    state: present
+    regenerate: never
+
+- name: Create directories for users' ssh keys
+  ansible.builtin.file:
+    path: "files/{{ item.username }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ ssh_users }}"
+
+- name: Change ca keys permission
+  ansible.builtin.file:
+    path: "files/{{ item }}"
+    state: file
+    mode: '0600'
+  loop:
+    - "{{ ca_key_name }}"
+    - "{{ ca_key_name }}.pub"
+
+- name: Generate user ssh key pairs
+  community.crypto.openssh_keypair:
+    path: "files/{{ item.username }}/id_rsa"
+    type: rsa
+    size: 4096
+    state: present
+    regenerate: never
+  loop: "{{ ssh_users }}"
+
+- name: Sign user public keys with CA
+  community.crypto.openssh_cert:
+    type: user
+    path: "files/{{ item.username }}/id_rsa.cert"
+    public_key: "files/{{ item.username }}/id_rsa.pub"
+    signing_key: "files/{{ ca_key_name }}"
+    valid_from: always
+    valid_to: "+{{ cert_validity_week }}w"
+    principals: "{{ [item.username] + item.groups }}"
+    identifier: "{{ item.username }}"
+    state: present
+    regenerate: never
+  loop: "{{ ssh_users }}"
+
+- name: Generate SSH config for users
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: "files/{{ item.username }}/config"
+    mode: '0644'
+  loop: "{{ ssh_users }}"

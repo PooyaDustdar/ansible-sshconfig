@@ -11,19 +11,8 @@
     - ca_keygen
 
 - name: Configure SSH on gateway
-  ansible.builtin.import_tasks: sshd-gateway-config.yml
+  ansible.builtin.import_tasks: sshd-config.yml
   become: true
-  run_once: true
   tags:
-    - config_gateway
-  when: "'gateway' in group_names"
-  notify: Restart ssh
-
-- name: Configure SSH on servers
-  ansible.builtin.import_tasks: sshd-servers-config.yml
-  become: true
-  run_once: true
-  tags:
-    - config_servers
-  when: "'gateway' not in group_names"
+    - config_sshd
   notify: Restart ssh

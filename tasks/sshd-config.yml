@@ -2,7 +2,7 @@
 
 - name: Config the Gateway ssh daemon
   ansible.builtin.template:
-    src: servers_sshd_config.j2
+    src: sshd_config.j2
     dest: "/etc/ssh/sshd_config"
     mode: '0644'
 
@@ -14,15 +14,13 @@
     group: root
     mode: '0755'
 
-- name: Set up auth_principals for each user
+- name: Set up root auth_principals file for admins
   ansible.builtin.copy:
     content: |
+      {% for item in ssh_users %}
       {{ item.username }}
-      {% for g in item.groups %}
-      {{ g }}
       {% endfor %}
-    dest: "/etc/ssh/auth_principals/{{ item.username }}"
+    dest: "/etc/ssh/auth_principals/{% if 'gateway' in group_names %}proxy{% else %}root{% endif %}"
     owner: root
     group: root
     mode: '0644'
-  loop: "{{ ssh_users }}"
